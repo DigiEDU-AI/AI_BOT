@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080b10">
+  <title>TechBot · L1/L2/L3 Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+  <!-- ══════════ SCREEN: LOGIN ══════════ -->
+  <div id="screen-login" class="screen active">
+    <div class="bg-grid"></div>
+    <div class="login-wrapper">
+      <div class="login-logo">
+        <div class="logo-icon">⬡</div>
+        <div class="logo-text">
+          <span class="logo-title">TECHBOT</span>
+          <span class="logo-sub">L1 / L2 / L3 Support System</span>
+        </div>
+      </div>
+      <div class="login-card">
+        <div class="login-prompt">Zadajte prístupový PIN</div>
+        <div id="pin-display" class="pin-display">
+          <span class="pin-dot"></span><span class="pin-dot"></span>
+          <span class="pin-dot"></span><span class="pin-dot"></span>
+          <span class="pin-dot"></span><span class="pin-dot"></span>
+        </div>
+        <div class="pin-pad">
+          <button class="pin-btn" data-digit="1">1</button>
+          <button class="pin-btn" data-digit="2">2</button>
+          <button class="pin-btn" data-digit="3">3</button>
+          <button class="pin-btn" data-digit="4">4</button>
+          <button class="pin-btn" data-digit="5">5</button>
+          <button class="pin-btn" data-digit="6">6</button>
+          <button class="pin-btn" data-digit="7">7</button>
+          <button class="pin-btn" data-digit="8">8</button>
+          <button class="pin-btn" data-digit="9">9</button>
+          <button class="pin-btn pin-clear" data-action="clear">⌫</button>
+          <button class="pin-btn" data-digit="0">0</button>
+          <button class="pin-btn pin-submit" data-action="submit">✓</button>
+        </div>
+        <div id="login-error" class="login-error hidden">Nesprávny PIN. Skúste znovu.</div>
+      </div>
+      <div class="login-footer" id="login-footer-info">Načítavam konfiguráciu...</div>
+    </div>
+  </div>
+
+  <!-- ══════════ SCREEN: MAIN MENU ══════════ -->
+  <div id="screen-menu" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <span class="header-logo">⬡ TECHBOT</span>
+        <span id="header-status" class="status-badge online">ONLINE</span>
+      </div>
+      <div class="header-right">
+        <span id="header-cache-info" class="cache-info"></span>
+        <button id="btn-admin" class="btn-icon" title="Admin panel">⚙</button>
+        <button id="btn-logout" class="btn-icon" title="Odhlásiť">⏻</button>
+      </div>
+    </header>
+    <main class="menu-main">
+      <div class="menu-greeting">
+        <h1>Vyber typ problému</h1>
+        <p>AI asistent sa prispôsobí zvolenej kategórii</p>
+      </div>
+      <div class="menu-grid">
+        <button class="menu-card" data-module="hw">
+          <div class="card-icon">🖨</div>
+          <div class="card-label">HW problém</div>
+          <div class="card-desc">Tlačiarne, notebooky, monitory, periférie</div>
+          <div class="card-arrow">→</div>
+        </button>
+        <button class="menu-card" data-module="m365">
+          <div class="card-icon">🪟</div>
+          <div class="card-label">365 / Win problém</div>
+          <div class="card-desc">Microsoft 365, Windows, SW konfigurácie</div>
+          <div class="card-arrow">→</div>
+        </button>
+        <button class="menu-card" data-module="wifi">
+          <div class="card-icon">📡</div>
+          <div class="card-label">WiFi problém</div>
+          <div class="card-desc">Sieť, LAN, WLAN, konektivita, diagnostika</div>
+          <div class="card-arrow">→</div>
+        </button>
+        <button class="menu-card" data-module="digi">
+          <div class="card-icon">🏫</div>
+          <div class="card-label">DigiEDU školník</div>
+          <div class="card-desc">Administratívne úkony v DigiEDU prostredí</div>
+          <div class="card-arrow">→</div>
+        </button>
+        <button class="menu-card" data-module="other">
+          <div class="card-icon">🔧</div>
+          <div class="card-label">Iný problém</div>
+          <div class="card-desc">Ostatné technické a prevádzkové problémy</div>
+          <div class="card-arrow">→</div>
+        </button>
+      </div>
+      <div class="menu-bottom">
+        <button id="btn-read-kb" class="btn-read-kb">
+          <span>📚</span> Čítať KB
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════ SCREEN: MODULE ══════════ -->
+  <div id="screen-module" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <button id="btn-back" class="btn-icon" title="Späť">←</button>
+        <span id="module-title" class="header-module-title">Modul</span>
+        <span id="module-status" class="status-badge online">ONLINE</span>
+      </div>
+      <div class="header-right">
+        <span id="case-id-display" class="case-id"></span>
+        <button id="btn-new-case" class="btn-icon hidden" title="Nový prípad">+</button>
+      </div>
+    </header>
+    <div id="module-content" class="module-content"></div>
+  </div>
+
+  <!-- ══════════ SCREEN: ADMIN ══════════ -->
+  <div id="screen-admin" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <button id="btn-admin-back" class="btn-icon">←</button>
+        <span class="header-module-title">⚙ Admin Panel</span>
+      </div>
+    </header>
+    <div id="admin-content" class="module-content"></div>
+  </div>
+
+  <!-- ══════════ GLOBAL OVERLAYS ══════════ -->
+  <div id="overlay-loading" class="overlay-loading hidden">
+    <div class="loading-spinner"></div>
+    <div id="loading-text" class="loading-text">Spracovávam...</div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ══════════ SCRIPTS (order matters) ══════════ -->
+  <script src="config-loader/config.js"></script>
+  <script src="scripts/offline-cache.js"></script>
+  <script src="scripts/api.js"></script>
+  <script src="scripts/auth.js"></script>
+  <script src="components/ai-output.js"></script>
+  <script src="components/case-close.js"></script>
+  <script src="modules/hw.js"></script>
+  <script src="modules/m365.js"></script>
+  <script src="modules/wifi.js"></script>
+  <script src="modules/digi.js"></script>
+  <script src="modules/other.js"></script>
+  <script src="scripts/app.js"></script>
+
+</body>
+</html>
