@@ -12,7 +12,7 @@
 window.AppConfig = (function () {
 
   // ── GAS URL – jediné miesto kde je URL vo frontende ──
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycby-UXKn0bCVf7V47E7DIxMJzcfFt_T-fOai0JZ-adtS-fvmK0Qi8__I0UZeSGJZHr_I/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxkhO5-LkxMzqSyvpzLC9xlXg-u1UW2pmAHf1vqkoIwN6Q3UvuOxgZbG2KwQw9i9jt0/exec';
 
   let _config   = null;
   let _hardware = null;
