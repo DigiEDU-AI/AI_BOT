@@ -7,7 +7,7 @@ window.AppConfig = (function () {
 
   // ── KONFIGURÁCIA BACKENDU ──
   // Uisti sa, že táto URL končí na /exec
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxkhO5-LkxMzqSyvpzLC9xlXg-u1UW2pmAHf1vqkoIwN6Q3UvuOxgZbG2KwQw9i9jt0/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycby-UXKn0bCVf7V47E7DIxMJzcfFt_T-fOai0JZ-adtS-fvmK0Qi8__I0UZeSGJZHr_I/exec';
 
   let _config   = null;
   let _hardware = null;
