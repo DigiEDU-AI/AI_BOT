@@ -1,12 +1,13 @@
 /**
  * config-loader/config.js
  * Načítava konfiguráciu z Google Apps Script (GAS) a spravuje lokálnu cache.
+ * FIX: Implementovaná text/plain hlavička pre obídenie CORS obmedzení.
  */
 
 window.AppConfig = (function () {
 
   // ── KONFIGURÁCIA BACKENDU ──
-  // Uisti sa, že táto URL končí na /exec
+  // Aktuálna URL z tvojho posledného úspešného deploymentu
   const GAS_URL = 'https://script.google.com/macros/s/AKfycby-UXKn0bCVf7V47E7DIxMJzcfFt_T-fOai0JZ-adtS-fvmK0Qi8__I0UZeSGJZHr_I/exec';
 
   let _config   = null;
@@ -32,15 +33,16 @@ window.AppConfig = (function () {
 
   // ── KOMUNIKÁCIA S GAS ──
   async function _post(payload) {
+    // Táto časť je kľúčová pre odstránenie "Access-Control-Allow-Origin" chyby
     const res = await fetch(GAS_URL, {
       method: 'POST',
-      mode: 'cors', // Povolenie cross-origin komunikácie
+      mode: 'cors', 
       body: JSON.stringify(payload),
       headers: { 
-        // Použitie text/plain často obchádza prísne CORS kontroly v GAS
+        // Zmena na text/plain obchádza "preflight" kontrolu prehliadača
         'Content-Type': 'text/plain;charset=utf-8' 
       },
-      signal: AbortSignal.timeout(15000), // Timeout po 15 sekundách
+      signal: AbortSignal.timeout(15000), 
     });
 
     if (!res.ok) {
@@ -51,42 +53,34 @@ window.AppConfig = (function () {
   }
 
   // ── INICIALIZÁCIA ──
-  /**
-   * Inicializuje konfiguráciu. 
-   * @param {string} userPin - PIN zadaný užívateľom. Ak nie je zadaný, použije sa len cache.
-   */
   async function init(userPin = null) {
-    // Vždy najprv načítame to, čo máme v pamäti (pre offline štart)
     _config   = _fromCache('tb_app_config');
     _hardware = _fromCache('tb_hw_catalog');
 
-    // Ak nemáme PIN, nepokúšame sa o sieťové volanie (zabráni Fetch Erroru)
+    // Ak nemáme PIN, nepokúšame sa o sieťové volanie pri štarte (prevencia Fetch Erroru)
     if (!userPin) {
-      console.log('[Config] Načítaná lokálna cache, čakám na overenie PINu.');
+      console.log('[Config] Režim offline/čakám na PIN.');
       return { config: _config, hardware: _hardware };
     }
 
     try {
-      // 1. Stiahnutie hlavnej konfigurácie
+      // 1. Načítanie app-config.json z Drive
       const cfgRes = await _post({ action: 'get_config', pin: userPin });
       if (cfgRes?.status === 'success') {
         _config = cfgRes.data;
         _toCache('tb_app_config', _config);
-        console.log('[Config] Nastavenia úspešne aktualizované z GAS.');
-      } else {
-        console.warn('[Config] GAS vrátil chybu pri get_config:', cfgRes?.message);
+        console.log('[Config] Konfigurácia načítaná.');
       }
 
-      // 2. Stiahnutie katalógu hardvéru
+      // 2. Načítanie hardware-catalog.json z Drive
       const hwRes = await _post({ action: 'loadHardware', pin: userPin });
       if (hwRes?.status === 'success') {
         _hardware = hwRes.data;
         _toCache('tb_hw_catalog', _hardware);
-        console.log('[Config] Hardware katalóg aktualizovaný.');
+        console.log('[Config] HW katalóg načítaný.');
       }
     } catch (e) {
-      console.error('[Config] Sieťová chyba (Fetch Error):', e.message);
-      // Fallback: ak sme v režime overovania a fetch zlyhal, vrátime aspoň cache
+      console.error('[Config] Chyba spojenia:', e.message);
     }
 
     return { config: _config, hardware: _hardware };
@@ -96,7 +90,7 @@ window.AppConfig = (function () {
   function get()         { return _config; }
   
   function getHardware() { 
-    // Ošetrenie štruktúry hardware-catalog.json
+    // Spracovanie štruktúry tvojho hardware-catalog.json
     if (Array.isArray(_hardware)) return _hardware;
     if (_hardware?.hardware_catalog) return _hardware.hardware_catalog;
     return [];
@@ -109,7 +103,7 @@ window.AppConfig = (function () {
   }
 
   function getRoundAModel() {
-    return _config?.ai_configuration?.round_A?.default_model || 'claude-haiku-4-5-20251001';
+    return _config?.ai_configuration?.round_A?.default_model || 'claude-3-5-sonnet-20241022';
   }
 
   function getKBReaderUrl() {
@@ -121,7 +115,6 @@ window.AppConfig = (function () {
     return path.split('.').reduce((o, k) => o?.[k], _config) ?? fallback;
   }
 
-  // Exportovanie API
   return {
     init,
     get,
