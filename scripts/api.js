@@ -1,87 +1,51 @@
 /**
- * scripts/api.js
- * Hlavné komunikačné rozhranie pre AI požiadavky a ukladanie dát.
- * FIX: Implementovaná text/plain hlavička pre obídenie CORS blokácie.
+ * scripts/api.js - FINALNA NANOVA OPRAVA
  */
-
 window.AppAPI = (function () {
 
-  /**
-   * Interná funkcia na vykonanie POST požiadavky na GAS backend.
-   * Automaticky pripája PIN užívateľa z localStorage.
-   */
   async function _post(payload) {
-    const url = window.AppConfig.getGasUrl(); // Načíta URL z config.js
-    const pin = localStorage.getItem('tb_user_pin'); // Načíta PIN uložený v auth.js
+    const url = window.AppConfig.getGasUrl();
+    const pin = localStorage.getItem('tb_user_pin');
     
-    if (!pin) {
-      console.warn('[API] PIN nie je v pamäti, požiadavka môže zlyhať.');
-    }
-
-    const res = await fetch(url, {
+    // Google Apps Script vyžaduje, aby požiadavka vyzerala čo najjednoduchšie
+    const requestOptions = {
       method: 'POST',
-      mode: 'cors',
-      body: JSON.stringify({ 
-        ...payload, 
-        pin: pin // Každá požiadavka musí obsahovať PIN
-      }),
+      mode: 'cors', // MUSÍ BYŤ CORS kvôli redirectom Google
       headers: {
-        // Kľúč k vyriešeniu CORS: Musí byť text/plain
+        // Úplne vynecháme zložité hlavičky, necháme len základ
         'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify({ ...payload, pin })
+    };
+
+    try {
+      const res = await fetch(url, requestOptions);
+      
+      // Ak Google presmeruje (redirect), fetch to v mode 'cors' spracuje, 
+      // ale musíme dostať validný JSON
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("[API] Server nevrátil JSON, ale toto:", text);
+        throw new Error("Neplatná odpoveď zo servera");
       }
-    });
-
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status}`);
+    } catch (err) {
+      console.error("[API] Kritická chyba komunikácie:", err);
+      throw err;
     }
-
-    return await res.json();
   }
 
-  /**
-   * Odošle požiadavku na AI (Kolo A alebo Kolo B).
-   * @param {string} prompt - Textová inštrukcia pre AI.
-   * @param {object} opts - Voliteľné nastavenia (model, provider).
-   */
-  async function askAI(prompt, opts = {}) {
-    return await _post({
+  return {
+    askAI: async (prompt, opts = {}) => await _post({
       action: 'ai_request',
       payload: {
-        prompt: prompt,
+        prompt,
         provider: opts.provider || window.AppConfig.getRoundAProvider(),
-        model: opts.model || window.AppConfig.getRoundAModel(),
-        max_tokens: opts.max_tokens || 2000
+        model: opts.model || window.AppConfig.getRoundAModel()
       }
-    });
-  }
-
-  /**
-   * Uloží výsledok diagnostiky (Case) do Google Drive.
-   * @param {object} caseData - Kompletný objekt s dátami o prípade.
-   */
-  async function saveCase(caseData) {
-    return await _post({
-      action: 'saveCase',
-      caseData: caseData
-    });
-  }
-
-  /**
-   * Načíta zoznam indexovaných súborov z Knowledge Base pre daný modul.
-   * @param {string} moduleName - Názov modulu (napr. KB_HW).
-   */
-  async function getKBIndex(moduleName) {
-    return await _post({
-      action: 'kb_index',
-      module: moduleName
-    });
-  }
-
-  // Verejné rozhranie modulu
-  return {
-    askAI,
-    saveCase,
-    getKBIndex
+    }),
+    saveCase: async (caseData) => await _post({ action: 'saveCase', caseData }),
+    getKBIndex: async (module) => await _post({ action: 'kb_index', module })
   };
-
 })();
