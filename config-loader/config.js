@@ -33,24 +33,29 @@ window.AppConfig = (function () {
 
   // ── KOMUNIKÁCIA S GAS ──
   async function _post(payload) {
-    // Táto časť je kľúčová pre odstránenie "Access-Control-Allow-Origin" chyby
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'cors', 
-      body: JSON.stringify(payload),
-      headers: { 
-        // Zmena na text/plain obchádza "preflight" kontrolu prehliadača
-        'Content-Type': 'text/plain;charset=utf-8' 
-      },
-      signal: AbortSignal.timeout(15000), 
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP Error: ${res.status}`);
+  // Musíme odstrániť zložité hlavičky, aby sme sa vyhli CORS preflightu
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors', // SKÚS NAJPRV TOTO pre totálne obídenie, alebo ponechaj cors s text/plain
+    body: JSON.stringify(payload),
+    headers: {
+      // TU JE ZMENA: Nesmie tu byť 'application/json'
+      'Content-Type': 'text/plain;charset=utf-8' 
     }
+  });
 
-    return res.json();
-  }
+  // POZOR: Pri mode 'no-cors' neuvidíš res.ok, skúsme teda nechať 'cors' ale s text/plain:
+  // Ak vyššie uvedené nepomôže, vymeň to za tento blok:
+  /*
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'cors',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  return res.json();
+  */
+}
 
   // ── INICIALIZÁCIA ──
   async function init(userPin = null) {
