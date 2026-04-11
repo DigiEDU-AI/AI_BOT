@@ -1,83 +1,83 @@
 /**
  * scripts/api.js
- * Centralised GAS communication layer.
- * All sensitive data flows through here — never in frontend constants.
+ * Hlavné komunikačné rozhranie pre AI a ukladanie dát.
  */
 
-window.API = (function () {
+window.AppAPI = (function () {
 
-  let _pin         = null;
-  let _adminPass   = null;
-  let _online      = true;
-
-  // ─────────────────────────────────────────
-  // Internal
-  // ─────────────────────────────────────────
-  function _gasUrl() {
-    return AppConfig.getGasUrl();
+  // Pomocná funkcia na získanie aktuálnej URL a PINu
+  function _getAuth() {
+    return {
+      url: window.AppConfig.getGasUrl(),
+      pin: localStorage.getItem('tb_user_pin') // Predpokladáme, že auth.js ho sem uložil
+    };
   }
 
   async function _post(payload) {
-    const res = await fetch(_gasUrl(), {
+    const auth = _getAuth();
+    
+    // Pridáme PIN ku každej požiadavke
+    const body = {
+      ...payload,
+      pin: auth.pin
+    };
+
+    const res = await fetch(auth.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000), // 30 s timeout
+      mode: 'cors',
+      body: JSON.stringify(body),
+      headers: {
+        // FIX: Zmena z application/json na text/plain pre GAS
+        'Content-Type': 'text/plain;charset=utf-8'
+      }
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
+
+    if (!res.ok) throw new Error('API Error: ' + res.status);
+    return await res.json();
   }
 
-  // ─────────────────────────────────────────
-  // Auth context setters
-  // ─────────────────────────────────────────
-  function setPin(pin)          { _pin = pin; }
-  function setAdminPass(pass)   { _adminPass = pass; }
-  function clearAuth()          { _pin = null; _adminPass = null; }
-
-  // ─────────────────────────────────────────
-  // Generic call
-  // ─────────────────────────────────────────
-  async function call(action, extras = {}, useAdmin = false) {
-    const payload = { action, pin: _pin, ...extras };
-    if (useAdmin) payload.adminPassword = _adminPass;
-
-    try {
-      const result = await _post(payload);
-      _online = true;
-      Cache.markOnline();
-      return result;
-    } catch (err) {
-      _online = false;
-      Cache.markOffline();
-      throw err;
-    }
+  /**
+   * Odoslanie požiadavky na AI (Kolo A alebo B)
+   */
+  async function askAI(prompt, options = {}) {
+    return await _post({
+      action: 'ai_request',
+      payload: {
+        prompt: prompt,
+        provider: options.provider || window.AppConfig.getRoundAProvider(),
+        model: options.model || window.AppConfig.getRoundAModel(),
+        max_tokens: options.max_tokens || 2000
+      }
+    });
   }
 
-  // ─────────────────────────────────────────
-  // Public API calls
-  // ─────────────────────────────────────────
-
-  /** Verify PIN against GAS */
-  async function verifyPin(pin) {
-    return _post({ action: 'verify_pin', pin });
-  }
-
-  /** Verify admin password */
-  async function verifyAdmin(pin, pass) {
-    return _post({ action: 'verify_admin', pin, adminPassword: pass });
-  }
-
-  /** AI request – Round A (content) or Round B (language cleanup) */
-  async function aiRequest(payload) {
-    if (!_online && !navigator.onLine) {
-      throw new Error('Offline – AI volanie nie je dostupné');
-    }
-    return call('ai_request', { payload });
-  }
-
-  /** Save completed case + write to KB */
+  /**
+   * Uloženie vyriešeného prípadu do Google Drive
+   */
   async function saveCase(caseData) {
+    return await _post({
+      action: 'saveCase',
+      caseData: caseData
+    });
+  }
+
+  /**
+   * Načítanie indexu z Knowledge Base
+   */
+  async function getKBIndex(moduleName) {
+    return await _post({
+      action: 'kb_index',
+      module: moduleName
+    });
+  }
+
+  return {
+    askAI,
+    saveCase,
+    getKBIndex
+  };
+
+})();  async function saveCase(caseData) {
     if (!navigator.onLine) {
       Cache.enqueue({ type: 'saveCase', caseData });
       return { status: 'queued', message: 'Case uložený do fronty (offline)' };
