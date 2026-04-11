@@ -108,3 +108,4 @@ const Auth = (function () {
 })();
 
 document.addEventListener('DOMContentLoaded', () => Auth.init());
+// v2
