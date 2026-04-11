@@ -1,58 +1,63 @@
 /**
  * scripts/api.js
- * Hlavné komunikačné rozhranie pre AI a ukladanie dát.
+ * Hlavné komunikačné rozhranie pre AI požiadavky a ukladanie dát.
+ * FIX: Implementovaná text/plain hlavička pre obídenie CORS blokácie.
  */
 
 window.AppAPI = (function () {
 
-  // Pomocná funkcia na získanie aktuálnej URL a PINu
-  function _getAuth() {
-    return {
-      url: window.AppConfig.getGasUrl(),
-      pin: localStorage.getItem('tb_user_pin') // Predpokladáme, že auth.js ho sem uložil
-    };
-  }
-
+  /**
+   * Interná funkcia na vykonanie POST požiadavky na GAS backend.
+   * Automaticky pripája PIN užívateľa z localStorage.
+   */
   async function _post(payload) {
-    const auth = _getAuth();
+    const url = window.AppConfig.getGasUrl(); // Načíta URL z config.js
+    const pin = localStorage.getItem('tb_user_pin'); // Načíta PIN uložený v auth.js
     
-    // Pridáme PIN ku každej požiadavke
-    const body = {
-      ...payload,
-      pin: auth.pin
-    };
+    if (!pin) {
+      console.warn('[API] PIN nie je v pamäti, požiadavka môže zlyhať.');
+    }
 
-    const res = await fetch(auth.url, {
+    const res = await fetch(url, {
       method: 'POST',
       mode: 'cors',
-      body: JSON.stringify(body),
+      body: JSON.stringify({ 
+        ...payload, 
+        pin: pin // Každá požiadavka musí obsahovať PIN
+      }),
       headers: {
-        // FIX: Zmena z application/json na text/plain pre GAS
+        // Kľúč k vyriešeniu CORS: Musí byť text/plain
         'Content-Type': 'text/plain;charset=utf-8'
       }
     });
 
-    if (!res.ok) throw new Error('API Error: ' + res.status);
+    if (!res.ok) {
+      throw new Error(`API Error: ${res.status}`);
+    }
+
     return await res.json();
   }
 
   /**
-   * Odoslanie požiadavky na AI (Kolo A alebo B)
+   * Odošle požiadavku na AI (Kolo A alebo Kolo B).
+   * @param {string} prompt - Textová inštrukcia pre AI.
+   * @param {object} opts - Voliteľné nastavenia (model, provider).
    */
-  async function askAI(prompt, options = {}) {
+  async function askAI(prompt, opts = {}) {
     return await _post({
       action: 'ai_request',
       payload: {
         prompt: prompt,
-        provider: options.provider || window.AppConfig.getRoundAProvider(),
-        model: options.model || window.AppConfig.getRoundAModel(),
-        max_tokens: options.max_tokens || 2000
+        provider: opts.provider || window.AppConfig.getRoundAProvider(),
+        model: opts.model || window.AppConfig.getRoundAModel(),
+        max_tokens: opts.max_tokens || 2000
       }
     });
   }
 
   /**
-   * Uloženie vyriešeného prípadu do Google Drive
+   * Uloží výsledok diagnostiky (Case) do Google Drive.
+   * @param {object} caseData - Kompletný objekt s dátami o prípade.
    */
   async function saveCase(caseData) {
     return await _post({
@@ -62,7 +67,8 @@ window.AppAPI = (function () {
   }
 
   /**
-   * Načítanie indexu z Knowledge Base
+   * Načíta zoznam indexovaných súborov z Knowledge Base pre daný modul.
+   * @param {string} moduleName - Názov modulu (napr. KB_HW).
    */
   async function getKBIndex(moduleName) {
     return await _post({
@@ -71,56 +77,11 @@ window.AppAPI = (function () {
     });
   }
 
+  // Verejné rozhranie modulu
   return {
     askAI,
     saveCase,
     getKBIndex
   };
 
-})();  async function saveCase(caseData) {
-    if (!navigator.onLine) {
-      Cache.enqueue({ type: 'saveCase', caseData });
-      return { status: 'queued', message: 'Case uložený do fronty (offline)' };
-    }
-    return call('saveCase', { caseData });
-  }
-
-  /** Load KB index for a module */
-  async function loadKBIndex(module) {
-    const cached = Cache.getKBIndex(module);
-    if (cached) return { status: 'success', data: cached, source: 'cache' };
-    const res = await call('kb_index', { module });
-    if (res?.status === 'success') Cache.cacheKBIndex(module, res.data);
-    return res;
-  }
-
-  /** Update config value (admin only) */
-  async function updateConfig(key, value) {
-    return call('update_config', { key, value }, true);
-  }
-
-  /** Get admin stats */
-  async function getAdminStats() {
-    return call('admin_view', {}, true);
-  }
-
-  /** Process offline queue */
-  async function flushQueue() {
-    return Cache.processQueue(async (item) => {
-      if (item.type === 'saveCase') {
-        return call('saveCase', { caseData: item.caseData });
-      }
-    });
-  }
-
-  function isOnline() { return _online; }
-
-  return {
-    setPin, setAdminPass, clearAuth,
-    call,
-    verifyPin, verifyAdmin,
-    aiRequest, saveCase, loadKBIndex,
-    updateConfig, getAdminStats, flushQueue,
-    isOnline,
-  };
 })();
