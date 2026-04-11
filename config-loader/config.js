@@ -110,3 +110,4 @@ window.AppConfig = (function () {
   };
 
 })();
+// verzia 1.0.1
