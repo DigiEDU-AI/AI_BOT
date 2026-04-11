@@ -1,20 +1,15 @@
 /**
  * scripts/auth.js
- * Správa PIN kódu, autentifikácia a prepínanie obrazoviek.
+ * Správa PIN kódu a autentifikácia.
  */
-
 const Auth = (function () {
   let enteredPin = "";
-  const MAX_PIN_LENGTH = 6; // Podľa README
+  const MAX_PIN_LENGTH = 6;
 
-  // DOM elementy
   const pinDisplay = document.getElementById('pin-display');
   const loginError = document.getElementById('login-error');
   const loginFooter = document.getElementById('login-footer-info');
 
-  /**
-   * Inicializácia eventov pre PIN pad
-   */
   function init() {
     console.log('[Auth] Inicializujem PIN pad...');
     
@@ -29,9 +24,9 @@ const Auth = (function () {
       });
     });
 
-    // Umožníme písať PIN aj na klávesnici
     document.addEventListener('keydown', (e) => {
-      if (document.getElementById('screen-login').classList.contains('active')) {
+      const screenLogin = document.getElementById('screen-login');
+      if (screenLogin && screenLogin.classList.contains('active')) {
         if (e.key >= '0' && e.key <= '9') _addDigit(e.key);
         if (e.key === 'Backspace') _clearPin();
         if (e.key === 'Enter') handleLogin();
@@ -63,9 +58,6 @@ const Auth = (function () {
     });
   }
 
-  /**
-   * Hlavná funkcia prihlásenia
-   */
   async function handleLogin() {
     if (enteredPin.length < MAX_PIN_LENGTH) {
       _showError("Zadajte kompletný 6-ciferný PIN.");
@@ -75,26 +67,22 @@ const Auth = (function () {
     _setLoading(true);
 
     try {
-      // Voláme AppConfig s reálnym PINom
-      // To spustí akcie 'get_config' a 'loadHardware' v GAS
+      // Voláme AppConfig, ktorý v sebe rieši action: 'get_config' [cite: 75]
       const { config } = await window.AppConfig.init(enteredPin);
-
+      
       if (config) {
         console.log('[Auth] Login úspešný.');
         _showScreen('screen-menu');
-        
-        // Ak existuje hlavný App ovládač, povieme mu, že sme online
         if (window.App && typeof window.App.init === 'function') {
           window.App.init();
         }
       } else {
-        // Ak config neprišiel, pravdepodobne zlý PIN v Script Properties
-        _showError("Nesprávny PIN. Skúste to znova.");
+        _showError("Nesprávny PIN alebo chyba konfigurácie.");
         _clearPin();
       }
     } catch (error) {
       console.error('[Auth] Kritická chyba prihlásenia:', error);
-      _showError("Chyba spojenia (Fetch Error). Skontrolujte GAS URL.");
+      _showError("Chyba spojenia. Skontrolujte konzolu (F12).");
     } finally {
       _setLoading(false);
     }
@@ -106,13 +94,9 @@ const Auth = (function () {
   }
 
   function _setLoading(isLoading) {
-    if (isLoading) {
-      loginFooter.innerText = "Overujem a sťahujem dáta...";
-      pinDisplay.classList.add('loading');
-    } else {
-      loginFooter.innerText = "Pripravený";
-      pinDisplay.classList.remove('loading');
-    }
+    loginFooter.innerText = isLoading ? "Overujem a sťahujem dáta..." : "Pripravený";
+    if (isLoading) pinDisplay.classList.add('loading');
+    else pinDisplay.classList.remove('loading');
   }
 
   function _showScreen(screenId) {
@@ -120,11 +104,7 @@ const Auth = (function () {
     document.getElementById(screenId).classList.add('active');
   }
 
-  return {
-    init,
-    handleLogin
-  };
+  return { init, handleLogin };
 })();
 
-// Spustenie po načítaní DOMu
 document.addEventListener('DOMContentLoaded', () => Auth.init());
